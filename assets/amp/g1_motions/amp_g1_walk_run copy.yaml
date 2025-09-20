@@ -1,0 +1,56 @@
+motions:
+  # - file: 16_58_amp_walk.npy
+  #   weight: 1.0
+  # - file: 16_47_amp_walk.npy
+  #   weight: 1.0
+  # - file: 16_22_amp_walk.npy
+  #   weight: 1.0
+  # - file: 16_16_amp_walk.npy
+  #   weight: 1.0
+
+
+# walk 
+  # - file: walk_play1.npy
+  #   weight: 1.0
+  # - file: walk_play2.npy
+  #   weight: 1.0
+  
+  - file: 16_31_amp.npy
+    weight: 2.0
+  - file: 16_34_amp.npy
+    weight: 2.0
+  - file: 16_11_amp.npy
+    weight: 0.4
+  - file: 16_25_amp.npy
+    weight: 0.4
+  - file: 16_13_amp.npy
+    weight: 0.4
+  - file: 16_22_amp.npy
+    weight: 0.2
+  - file: 16_32_amp.npy
+    weight: 2.0
+  - file: 16_15_amp.npy
+    weight: 0.2
+  - file: 16_16_amp.npy
+    weight: 0.2
+  - file: 16_17_amp.npy
+    weight: 0.4
+  - file: 16_47_amp.npy
+    weight: 0.2
+  - file: 16_23_amp.npy
+    weight: 0.4
+  - file: 16_20_amp.npy
+    weight: 0.4
+  - file: 16_18_amp.npy
+    weight: 0.4
+  - file: 16_33_amp.npy
+    weight: 2.0
+  - file: 16_14_amp.npy
+    weight: 0.4
+  - file: 16_58_amp.npy
+    weight: 0.2
+  - file: 16_12_amp.npy
+    weight: 0.4
+  - file: 16_19_amp.npy
+    weight: 0.4
+

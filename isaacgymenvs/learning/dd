@@ -1,0 +1,29 @@
+
+Network(
+  (actor_cnn): Sequential()
+  (critic_cnn): Sequential()
+  (actor_mlp): Sequential(
+    (0): Linear(in_features=105, out_features=1024, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=1024, out_features=512, bias=True)
+    (3): ReLU()
+  )
+  (critic_mlp): Sequential(
+    (0): Linear(in_features=105, out_features=1024, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=1024, out_features=512, bias=True)
+    (3): ReLU()
+  )
+  (value): Linear(in_features=512, out_features=1, bias=True)
+  (value_act): Identity()
+  (mu): Linear(in_features=512, out_features=28, bias=True)
+  (mu_act): Identity()
+  (sigma_act): Identity()
+  (_disc_mlp): Sequential(
+    (0): Linear(in_features=210, out_features=1024, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=1024, out_features=512, bias=True)
+    (3): ReLU()
+  )
+  (_disc_logits): Linear(in_features=512, out_features=1, bias=True)
+)
