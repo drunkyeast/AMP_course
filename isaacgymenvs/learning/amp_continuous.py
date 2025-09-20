@@ -52,6 +52,7 @@ class AMPAgent(common_agent.CommonAgent):
     def __init__(self, base_name, params):
         super().__init__(base_name, params)
 
+        # 父类初始完后, 下面是对输入的正则化
         if self.normalize_value:
             self.value_mean_std = self.central_value_net.model.value_mean_std if self.has_central_value else self.model.value_mean_std
         if self._normalize_amp_input:
@@ -94,8 +95,8 @@ class AMPAgent(common_agent.CommonAgent):
         epinfos = []
         update_list = self.update_list
 
-        for n in range(self.horizon_length):
-            self.obs, done_env_ids = self._env_reset_done()
+        for n in range(self.horizon_length): # horizon_length = 16
+            self.obs, done_env_ids = self._env_reset_done() # reset, 这里面讲了很多, 但听不懂...
             self.experience_buffer.update_data('obses', n, self.obs['obs'])
 
             if self.use_action_masks:
@@ -104,13 +105,13 @@ class AMPAgent(common_agent.CommonAgent):
             else:
                 res_dict = self.get_action_values(self.obs)
 
-            for k in update_list:
+            for k in update_list: # 5次
                 self.experience_buffer.update_data(k, n, res_dict[k]) 
 
             if self.has_central_value:
                 self.experience_buffer.update_data('states', n, self.obs['states'])
 
-            self.obs, rewards, self.dones, infos = self.env_step(res_dict['actions'])
+            self.obs, rewards, self.dones, infos = self.env_step(res_dict['actions']) # 这个执行, 会让画面动一下
             shaped_rewards = self.rewards_shaper(rewards)
             self.experience_buffer.update_data('rewards', n, shaped_rewards)
             self.experience_buffer.update_data('next_obses', n, self.obs['obs'])
@@ -174,7 +175,7 @@ class AMPAgent(common_agent.CommonAgent):
             if self.is_rnn:
                 batch_dict = self.play_steps_rnn()
             else:
-                batch_dict = self.play_steps() 
+                batch_dict = self.play_steps()  # 具体而言是这里, 会让训练的画面进行.
 
         play_time_end = time.time()
         update_time_start = time.time()
@@ -205,9 +206,9 @@ class AMPAgent(common_agent.CommonAgent):
             frames_mask_ratio = rnn_masks.sum().item() / (rnn_masks.nelement())
             print(frames_mask_ratio)
 
-        for _ in range(0, self.mini_epochs_num):
+        for _ in range(0, self.mini_epochs_num):  # 4次, 这是啥? 这个叫多步更新, PPO官方定义仍然是on-policy算法, 多步更新确实让PPO偏离了严格的on-policy定义。
             ep_kls = []
-            for i in range(len(self.dataset)):
+            for i in range(len(self.dataset)): # dataset分成好多份
                 curr_train_info = self.train_actor_critic(self.dataset[i])
                 
                 if self.schedule_type == 'legacy':

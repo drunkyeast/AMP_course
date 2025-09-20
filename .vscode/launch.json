@@ -1,0 +1,49 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        
+
+
+        
+        {
+            "name": "Python: AMP Training Debug",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/isaacgymenvs/train.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "task=Humanoid",
+                "train=HumanoidAMP",
+                "num_envs=512",
+                "headless=True"
+            ],
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Python: Current File Debug (No justMyCode)",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Python: Attach to Process",
+            "type": "python",
+            "request": "attach",
+            "connect": {
+                "host": "localhost",
+                "port": 5678
+            },
+            "justMyCode": false
+        }
+    ]
+}

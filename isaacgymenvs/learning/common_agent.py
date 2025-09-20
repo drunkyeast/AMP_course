@@ -67,7 +67,7 @@ class CommonAgent(a2c_continuous.A2CAgent):
 
         self.network_path = self.nn_dir
         
-        net_config = self._build_net_config()
+        net_config = self._build_net_config()  # 这里面构建整个网络?
         self.model = self.network.build(net_config)
         self.model.to(self.ppo_device)
         self.states = None
@@ -95,6 +95,7 @@ class CommonAgent(a2c_continuous.A2CAgent):
             self.central_value_net = central_value.CentralValueTrain(**cv_config).to(self.ppo_device)
 
         self.use_experimental_cv = self.config.get('use_experimental_cv', True)
+        # 读取数据
         self.dataset = amp_datasets.AMPDataset(self.batch_size, self.minibatch_size, self.is_discrete, self.is_rnn, self.ppo_device, self.seq_len)
         self.algo_observer.after_init(self)
         
@@ -108,7 +109,7 @@ class CommonAgent(a2c_continuous.A2CAgent):
         self.tensor_list += ['next_obses']
         return
 
-    def train(self):
+    def train(self): # 这个是训练!!!! 里面循环迭代
         self.init_tensors()
         self.last_mean_rewards = -100500
         start_time = time.time()
@@ -122,15 +123,15 @@ class CommonAgent(a2c_continuous.A2CAgent):
         self.model_output_file = os.path.join(self.network_path, 
             self.config['name'] + '_{date:%d-%H-%M-%S}'.format(date=datetime.now()))
 
-        self._init_train()
+        self._init_train() # 这儿会卡顿好几秒钟
 
         # global rank of the GPU
         # multi-gpu training is not currently supported for AMP
         self.global_rank = int(os.getenv("RANK", "0"))
 
-        while True:
-            epoch_num = self.update_epoch()
-            train_info = self.train_epoch()
+        while True: # 这个重要啊!!! 这儿开始
+            epoch_num = self.update_epoch() # 计数
+            train_info = self.train_epoch() # 训练, 这儿一致性, 就会有画面开始训练了. 这儿可以打个断点看看
 
             sum_time = train_info['total_time']
             total_time += sum_time
@@ -186,7 +187,7 @@ class CommonAgent(a2c_continuous.A2CAgent):
             if self.is_rnn:
                 batch_dict = self.play_steps_rnn()
             else:
-                batch_dict = self.play_steps() 
+                batch_dict = self.play_steps()  # 这里面采集horizon_length=16步的数据, 神经网络计算16次, 把结果存到batch_dict用于训练优化里面, 这里面讲了很多!!!
 
         play_time_end = time.time()
         update_time_start = time.time()
@@ -207,10 +208,10 @@ class CommonAgent(a2c_continuous.A2CAgent):
             frames_mask_ratio = rnn_masks.sum().item() / (rnn_masks.nelement())
             print(frames_mask_ratio)
 
-        for _ in range(0, self.mini_epochs_num):
+        for _ in range(0, self.mini_epochs_num): # 4次, 这是啥? 这个叫多步更新, PPO官方定义仍然是on-policy算法, 多步更新确实让PPO偏离了严格的on-policy定义。
             ep_kls = []
-            for i in range(len(self.dataset)):
-                curr_train_info = self.train_actor_critic(self.dataset[i])
+            for i in range(len(self.dataset)): # dataset分成好多份
+                curr_train_info = self.train_actor_critic(self.dataset[i]) # 计算梯度, 更新神经网络
                 print(type(curr_train_info))
                 
                 if self.schedule_type == 'legacy':
@@ -253,8 +254,8 @@ class CommonAgent(a2c_continuous.A2CAgent):
         epinfos = []
         update_list = self.update_list
 
-        for n in range(self.horizon_length):
-            self.obs, done_env_ids = self._env_reset_done()
+        for n in range(self.horizon_length): # horizon_length = 16
+            self.obs, done_env_ids = self._env_reset_done() # reset, 这里面讲了很多, 但听不懂...
             self.experience_buffer.update_data('obses', n, self.obs['obs'])
 
             if self.use_action_masks:
@@ -269,7 +270,8 @@ class CommonAgent(a2c_continuous.A2CAgent):
             if self.has_central_value:
                 self.experience_buffer.update_data('states', n, self.obs['states'])
 
-            self.obs, rewards, self.dones, infos = self.env_step(res_dict['actions'])
+            self.obs, rewards, self.dones, infos = self.env_step(res_dict['actions']) # 从前面的reset突然变到这里. 这里与环境进行交互, 熟悉的API, 得到计算obs和reward. 这里面又会讲很多
+            # 每次env_step会动两帧, 具体里面可以看到.
             shaped_rewards = self.rewards_shaper(rewards)
             self.experience_buffer.update_data('rewards', n, shaped_rewards)
             self.experience_buffer.update_data('next_obses', n, self.obs['obs'])
@@ -456,7 +458,7 @@ class CommonAgent(a2c_continuous.A2CAgent):
         return
 
     def _env_reset_done(self):
-        obs, done_env_ids = self.vec_env.reset_done()
+        obs, done_env_ids = self.vec_env.reset_done() # 这里面太细了, 而且跳转不了, 略, 重置环境就是了
         return self.obs_to_tensors(obs), done_env_ids
 
     def _eval_critic(self, obs_dict):

@@ -1,0 +1,14 @@
+{
+    "python.defaultInterpreterPath": "/home/touma/dev/toolchains/miniconda3/envs/robot_gym/bin/python",
+    "python.terminal.activateEnvironment": true,
+    "python.debugging.justMyCode": false,
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}",
+        "${workspaceFolder}/isaacgymenvs"
+    ],
+    "files.associations": {
+        "*.yaml": "yaml",
+        "*.yml": "yaml"
+    }
+}
