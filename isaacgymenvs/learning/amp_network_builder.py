@@ -36,6 +36,20 @@ import numpy as np
 
 DISC_LOGIT_INIT_SCALE = 1.0
 
+"""
+关于这个文件是从哪儿执行到的.
+train.py:224 runner.load()
+↓
+load_networks() (a2c_common.py:346)
+↓  
+ModelBuilder.load() 
+↓
+ModelAMPContinuous.build() (amp_models.py:39)
+↓
+network_builder.build('amp', **config)  # 这里找到注册的'amp'
+↓
+AMPBuilder() 被创建和执行！ (amp_network_builder.py:40)
+"""
 
 class AMPBuilder(network_builder.A2CBuilder):
     def __init__(self, **kwargs):

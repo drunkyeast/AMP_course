@@ -45,6 +45,7 @@ from rl_games.common import vecenv
 
 import torch
 from torch import optim
+from torch import nn
 
 from . import amp_datasets as amp_datasets
 
@@ -55,8 +56,10 @@ class CommonAgent(a2c_continuous.A2CAgent):
 
     def __init__(self, base_name, params):
     
-        a2c_common.A2CBase.__init__(self, base_name, params)
-
+        a2c_common.A2CBase.__init__(self, base_name, params) # fdd说这里面会build整个网络. 尤其是里面的load_networks函数. 不对, 好像说的是下面那个network.build
+        # 这里面很恶心, 再调试会绕晕, 会多次跳转到工厂的create函数, 所以直接全部跳过, 
+        # 这儿执行完后, 会创建Isaac Gym的窗口, 但里面是黑色的
+        # 这么一个不起眼的函数, 却会干非常多的事情. 会把train.py中的两个 model_builder, 通过工厂模式, create.
         config = params['config']
         self._load_config_params(config)
 
@@ -67,8 +70,12 @@ class CommonAgent(a2c_continuous.A2CAgent):
 
         self.network_path = self.nn_dir
         
-        net_config = self._build_net_config()  # 这里面构建整个网络?
-        self.model = self.network.build(net_config)
+        net_config = self._build_net_config() # {'actions_num': 28, 'input_shape': (105,), 'num_seqs': 512, 'value_size': 1, 'normalize_value': True, 'normalize_input': True, 'amp_input_shape': (210,)}
+        self.model = self.network.build(net_config)  # fdd好像是说这里会创建整个网络. 但我跳转不到build函数啊. 会跳到amp_models.py
+        # 这一行更加恶心, 会调用更多次的工厂的create函数. 直接跳过
+        # 网络的输入是105维度, 因为humanoid_amp.py中: NUM_AMP_OBS_PER_STEP = 13 + 52 + 28 + 12 # [root_h, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos]
+        # 这儿调试可以self.model看看网络结构. 其中(mu)输出维度28, 因为28个自由度. 价值网络输出维度是1. 
+        # 分辨网络是210, 是因为有两帧数据, 一前一后, 前进或后退, 更能表达状态的唯一性.
         self.model.to(self.ppo_device)
         self.states = None
 
@@ -95,7 +102,7 @@ class CommonAgent(a2c_continuous.A2CAgent):
             self.central_value_net = central_value.CentralValueTrain(**cv_config).to(self.ppo_device)
 
         self.use_experimental_cv = self.config.get('use_experimental_cv', True)
-        # 读取数据
+        # 前面构建完网络后, 这里还会创建数据
         self.dataset = amp_datasets.AMPDataset(self.batch_size, self.minibatch_size, self.is_discrete, self.is_rnn, self.ppo_device, self.seq_len)
         self.algo_observer.after_init(self)
         
@@ -131,8 +138,10 @@ class CommonAgent(a2c_continuous.A2CAgent):
 
         while True: # 这个重要啊!!! 这儿开始
             epoch_num = self.update_epoch() # 计数
-            train_info = self.train_epoch() # 训练, 这儿一致性, 就会有画面开始训练了. 这儿可以打个断点看看
-
+            train_info = self.train_epoch() # 训练, 这儿一致性, 就会有画面开始训练了. 这儿可以打个断点看看, 好恶心啊, 这里的train_apoch, 应该会执行到AMPAgent里面的train_epoch函数.
+            # 这种细节真的恶心, C++中叫什么多态, 这个python设计地一坨.
+            # train_epoch, 与仿真环境交互16次, 得到一个大的batch(一个字典), batch['actions'].shape(16*512*28)
+            # 然后batch会拿去多步迭代, 6次更新参数. calc_gradients计算梯度, 计算3个loss, 然后合并大loss反向传播. 然后更新3个网络参数.
             sum_time = train_info['total_time']
             total_time += sum_time
             frame = self.frame
@@ -208,10 +217,10 @@ class CommonAgent(a2c_continuous.A2CAgent):
             frames_mask_ratio = rnn_masks.sum().item() / (rnn_masks.nelement())
             print(frames_mask_ratio)
 
-        for _ in range(0, self.mini_epochs_num): # 4次, 这是啥? 这个叫多步更新, PPO官方定义仍然是on-policy算法, 多步更新确实让PPO偏离了严格的on-policy定义。
+        for _ in range(0, self.mini_epochs_num): # 6次, 这是啥? 这个叫多步更新, PPO官方定义仍然是on-policy算法, 多步更新确实让PPO偏离了严格的on-policy定义。
             ep_kls = []
-            for i in range(len(self.dataset)): # dataset分成好多份
-                curr_train_info = self.train_actor_critic(self.dataset[i]) # 计算梯度, 更新神经网络
+            for i in range(len(self.dataset)): # dataset分成好多份, 1个
+                curr_train_info = self.train_actor_critic(self.dataset[i]) # 不会走到这儿来!!! 注意多态!!!
                 print(type(curr_train_info))
                 
                 if self.schedule_type == 'legacy':
@@ -255,7 +264,7 @@ class CommonAgent(a2c_continuous.A2CAgent):
         update_list = self.update_list
 
         for n in range(self.horizon_length): # horizon_length = 16
-            self.obs, done_env_ids = self._env_reset_done() # reset, 这里面讲了很多, 但听不懂...
+            self.obs, done_env_ids = self._env_reset_done() # reset, 这里面讲了很多, 但听不懂... 里面就一个什么随机初始化的玩意儿.
             self.experience_buffer.update_data('obses', n, self.obs['obs'])
 
             if self.use_action_masks:
@@ -458,7 +467,7 @@ class CommonAgent(a2c_continuous.A2CAgent):
         return
 
     def _env_reset_done(self):
-        obs, done_env_ids = self.vec_env.reset_done() # 这里面太细了, 而且跳转不了, 略, 重置环境就是了
+        obs, done_env_ids = self.vec_env.reset_done() # 这里面太细了, 而且跳转不了, 可以看task/vec_task.py略, 重置环境就是了
         return self.obs_to_tensors(obs), done_env_ids
 
     def _eval_critic(self, obs_dict):

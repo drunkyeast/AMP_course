@@ -36,16 +36,16 @@ class ModelAMPContinuous(ModelA2CContinuousLogStd):
         return
 
     def build(self, config):
-        net = self.network_builder.build('amp', **config)
+        net = self.network_builder.build('amp', **config) # 这一行触发amp_network_builder.py相关, 会跳转到amp_network_builder.py的最后一行
         for name, _ in net.named_parameters():
-            print(name)
+            print(name) #  终端输出
 
         obs_shape = config['input_shape']
         normalize_value = config.get('normalize_value', False)
         normalize_input = config.get('normalize_input', False)
         value_size = config.get('value_size', 1)
 
-        return self.Network(net, obs_shape=obs_shape,
+        return self.Network(net, obs_shape=obs_shape, # 创建网络.
             normalize_value=normalize_value, normalize_input=normalize_input, value_size=value_size)
 
 

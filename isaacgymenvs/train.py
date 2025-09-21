@@ -68,7 +68,7 @@ def preprocess_train_config(cfg, config_dict):
     return config_dict
 
 
-@hydra.main(version_base="1.1", config_name="config", config_path="./cfg")
+@hydra.main(version_base="1.1", config_name="config", config_path="./cfg") # 这个装饰器会拦截函数体, 具体干什么略, 没必要看, 垃圾代码, 是给人看的吗?
 def launch_rlg_hydra(cfg: DictConfig):
 
     import logging
@@ -119,8 +119,8 @@ def launch_rlg_hydra(cfg: DictConfig):
     # sets seed. if seed is -1 will pick a random one
     cfg.seed = set_seed(cfg.seed, torch_deterministic=cfg.torch_deterministic, rank=global_rank)
 
-    def create_isaacgym_env(**kwargs):
-        envs = isaacgymenvs.make(
+    def create_isaacgym_env(**kwargs): 
+        envs = isaacgymenvs.make( # 创建环境, 这时才会出现isaacgym窗口
             cfg.seed, 
             cfg.task_name, 
             cfg.task.env.numEnvs, 
@@ -146,7 +146,7 @@ def launch_rlg_hydra(cfg: DictConfig):
 
     env_configurations.register('rlgpu', { # 我就说很奇怪, 为什么单步调试不进去. 断点被过滤器排除: env_configurations.register() 来自外部库 rl_games，调试器认为这不是"你的代码"，所以跳过了断点。有一个justMycode的参数设置, 具体不清楚, 略.
         'vecenv_type': 'RLGPU',
-        'env_creator': lambda **kwargs: create_isaacgym_env(**kwargs), # 这个是lambda表达式, 不会执行.
+        'env_creator': lambda **kwargs: create_isaacgym_env(**kwargs), # 这个是lambda表达式, 不会执行. 这是注册环境, 不知何时才会创建
     })
 
     ige_env_cls = isaacgym_task_map[cfg.task_name]
@@ -164,7 +164,7 @@ def launch_rlg_hydra(cfg: DictConfig):
         vecenv.register('RLGPU', lambda config_name, num_actors, **kwargs: ComplexObsRLGPUEnv(config_name, num_actors, obs_spec, **kwargs))
     else:
 
-        vecenv.register('RLGPU', lambda config_name, num_actors, **kwargs: RLGPUEnv(config_name, num_actors, **kwargs))
+        vecenv.register('RLGPU', lambda config_name, num_actors, **kwargs: RLGPUEnv(config_name, num_actors, **kwargs)) # 双重注册, 这而才跳回去创建环境, 卧槽
 
     rlg_config_dict = omegaconf_to_dict(cfg.train)
     rlg_config_dict = preprocess_train_config(cfg, rlg_config_dict)
@@ -210,8 +210,11 @@ def launch_rlg_hydra(cfg: DictConfig):
         这就是为什么调试时会"跳来跳去"的原因 - 这是设计模式的正常执行流程。
         """
         runner.algo_factory.register_builder('amp_continuous', lambda **kwargs : amp_continuous.AMPAgent(**kwargs)) # Agent在这里定义, 
+        # 关于这个lambda表达式的理解: python中`lambda x: x+1` 等价于 C++中[]`(int x) { return x+1; }`
+        # 当工厂中return builder(**kwargs) 时, 相当于给这个lambda函数传入参数, 然后执行函数体里面的amp_continuous.AMPAgent(**kwargs)这句话.
         runner.player_factory.register_builder('amp_continuous', lambda **kwargs : amp_players.AMPPlayerContinuous(**kwargs))
-        model_builder.register_model('continuous_amp', lambda network, **kwargs : amp_models.ModelAMPContinuous(network))
+        model_builder.register_model('continuous_amp', lambda network, **kwargs : amp_models.ModelAMPContinuous(network)) # 这儿怎么会跳转到创建环境env
+        # 目前看下来, 注册顺序与执行顺序不一样, 下面这一句还先执行呢. 工厂模式, 怎么调试啊.
         model_builder.register_network('amp', lambda **kwargs : amp_network_builder.AMPBuilder())
 
         return runner
@@ -219,7 +222,7 @@ def launch_rlg_hydra(cfg: DictConfig):
     # convert CLI arguments into dictionary
     # create runner and set the settings
     runner = build_runner(MultiObserver(observers)) # 这东西有必要细看
-    runner.load(rlg_config_dict) # 这种东西没必要细看
+    runner.load(rlg_config_dict) # 
     runner.reset() # 为什么pass了?
 
     # dump config dict

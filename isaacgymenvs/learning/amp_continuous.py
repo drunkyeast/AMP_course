@@ -50,7 +50,7 @@ from tensorboardX import SummaryWriter
 class AMPAgent(common_agent.CommonAgent):
 
     def __init__(self, base_name, params):
-        super().__init__(base_name, params)
+        super().__init__(base_name, params) # 这里面会跳转很多次.
 
         # 父类初始完后, 下面是对输入的正则化
         if self.normalize_value:
@@ -93,26 +93,32 @@ class AMPAgent(common_agent.CommonAgent):
         self.set_eval()
 
         epinfos = []
-        update_list = self.update_list
+        update_list = self.update_list # ['actions', 'neglogpacs', 'values', 'mus', 'sigmas']
 
         for n in range(self.horizon_length): # horizon_length = 16
-            self.obs, done_env_ids = self._env_reset_done() # reset, 这里面讲了很多, 但听不懂...
+            # 1. 环境重置（如需要）
+            self.obs, done_env_ids = self._env_reset_done() # reset, 这里面讲了很多, 但听不懂... 这里面讲了特别特别多, 特别特别深层. 就是讲这个随机初始化, 灿参考数据集什么105维度.
+            # 3. 存储推理结果
             self.experience_buffer.update_data('obses', n, self.obs['obs'])
 
             if self.use_action_masks:
                 masks = self.vec_env.get_action_masks()
                 res_dict = self.get_masked_action_values(self.obs, masks)
             else:
-                res_dict = self.get_action_values(self.obs)
-
+                # 2. 神经网络推理：观测→动作
+                res_dict = self.get_action_values(self.obs) # 得到一个action, 我的跳转怎么跟他不一样啊. 大概理解是, obs输入, 后面会得到mu和sigma. 然后构造正态分布distr(mu,sigma), 从中采样动作? 然后还有正则化和clip函数(怎么拼写成了clamp?) -5到+5.
+                # 说了一堆事ac网络的, 后面还有amp网络, amp_models.py中.
+            # 3. 存储推理结果
             for k in update_list: # 5次
                 self.experience_buffer.update_data(k, n, res_dict[k]) 
 
             if self.has_central_value:
                 self.experience_buffer.update_data('states', n, self.obs['states'])
 
+            # 4. 环境执行动作
             self.obs, rewards, self.dones, infos = self.env_step(res_dict['actions']) # 这个执行, 会让画面动一下
             shaped_rewards = self.rewards_shaper(rewards)
+            # 5. 存储环境反馈, 经验回放, 之前学强化学习时, 看过这些类似的, 但现在又忘记很多了.
             self.experience_buffer.update_data('rewards', n, shaped_rewards)
             self.experience_buffer.update_data('next_obses', n, self.obs['obs'])
             self.experience_buffer.update_data('dones', n, self.dones)
@@ -152,9 +158,9 @@ class AMPAgent(common_agent.CommonAgent):
 
         mb_advs = self.discount_values(mb_fdones, mb_values, mb_rewards, mb_next_values)
         mb_returns = mb_advs + mb_values
-
-        batch_dict = self.experience_buffer.get_transformed_list(a2c_common.swap_and_flatten01, self.tensor_list)
-        batch_dict['returns'] = a2c_common.swap_and_flatten01(mb_returns)
+        # 这个转化重要!!! 直接展平了., 打个断点, 看看batch_dict的形状.
+        batch_dict = self.experience_buffer.get_transformed_list(a2c_common.swap_and_flatten01, self.tensor_list) # 经验池转化成了batch_dict??
+        batch_dict['returns'] = a2c_common.swap_and_flatten01(mb_returns) # 展平了
         batch_dict['played_frames'] = self.batch_size
 
         for k, v in amp_rewards.items():
@@ -175,7 +181,7 @@ class AMPAgent(common_agent.CommonAgent):
             if self.is_rnn:
                 batch_dict = self.play_steps_rnn()
             else:
-                batch_dict = self.play_steps()  # 具体而言是这里, 会让训练的画面进行.
+                batch_dict = self.play_steps()  # 具体而言是这里, 会让训练的画面进行. batch_dict torch.Size([8192, 28])
 
         play_time_end = time.time()
         update_time_start = time.time()
@@ -194,7 +200,7 @@ class AMPAgent(common_agent.CommonAgent):
         self.set_train()
 
         self.curr_frames = batch_dict.pop('played_frames')
-        self.prepare_dataset(batch_dict)
+        self.prepare_dataset(batch_dict) # 这里对batch_dict进行了dataset的处理!!!
         self.algo_observer.after_steps()
 
         if self.has_central_value:
@@ -206,11 +212,12 @@ class AMPAgent(common_agent.CommonAgent):
             frames_mask_ratio = rnn_masks.sum().item() / (rnn_masks.nelement())
             print(frames_mask_ratio)
 
-        for _ in range(0, self.mini_epochs_num):  # 4次, 这是啥? 这个叫多步更新, PPO官方定义仍然是on-policy算法, 多步更新确实让PPO偏离了严格的on-policy定义。
+        for _ in range(0, self.mini_epochs_num):  # 6次, 这是啥? 这个叫多步更新, PPO官方定义仍然是on-policy算法, 多步更新确实让PPO偏离了严格的on-policy定义。
             ep_kls = []
-            for i in range(len(self.dataset)): # dataset分成好多份
-                curr_train_info = self.train_actor_critic(self.dataset[i])
-                
+            for i in range(len(self.dataset)): # len(dataset) = 1
+                curr_train_info = self.train_actor_critic(self.dataset[i]) # 这里面有calc_gradients会计算梯度, 要到calc_gradients里面看看!!
+                # 这个跳转逻辑好恶心啊, 后面又会跳到
+                # 这个跳转, 不要用ctrl+左键, 这样不会受到多态影响. calc_gradients在amp_continuous.py里面.
                 if self.schedule_type == 'legacy':
                     self.last_lr, self.entropy_coef = self.scheduler.update(self.last_lr, self.entropy_coef, self.epoch_num, 0, curr_train_info['kl'].item())
                     self.update_lr(self.last_lr)
@@ -247,7 +254,7 @@ class AMPAgent(common_agent.CommonAgent):
 
         return train_info
 
-    def calc_gradients(self, input_dict):
+    def calc_gradients(self, input_dict): # 往下看50行左右
         self.set_train()
 
         value_preds_batch = input_dict['old_values']
@@ -290,6 +297,7 @@ class AMPAgent(common_agent.CommonAgent):
             batch_dict['seq_length'] = self.seq_len
 
         with torch.cuda.amp.autocast(enabled=self.mixed_precision):
+            # 1. 前向传播
             res_dict = self.model(batch_dict)
             action_log_probs = res_dict['prev_neglogp']
             values = res_dict['values']
@@ -299,22 +307,23 @@ class AMPAgent(common_agent.CommonAgent):
             disc_agent_logit = res_dict['disc_agent_logit']
             disc_agent_replay_logit = res_dict['disc_agent_replay_logit']
             disc_demo_logit = res_dict['disc_demo_logit']
-
+            # 2. 损失计算, 分两部分, actor和critic还有正则化和bound
             a_info = self._actor_loss(old_action_log_probs_batch, action_log_probs, advantage, curr_e_clip)
-            a_loss = a_info['actor_loss']
+            a_loss = a_info['actor_loss'] # 2. 损失计算
 
             c_info = self._critic_loss(value_preds_batch, values, curr_e_clip, return_batch, self.clip_value)
-            c_loss = c_info['critic_loss']
+            c_loss = c_info['critic_loss'] # 2. 损失计算
 
             b_loss = self.bound_loss(mu)
 
             losses, sum_mask = torch_ext.apply_masks([a_loss.unsqueeze(1), c_loss, entropy.unsqueeze(1), b_loss.unsqueeze(1)], rnn_masks)
-            a_loss, c_loss, entropy, b_loss = losses[0], losses[1], losses[2], losses[3]
+            a_loss, c_loss, entropy, b_loss = losses[0], losses[1], losses[2], losses[3] # 2. 损失计算
             
             disc_agent_cat_logit = torch.cat([disc_agent_logit, disc_agent_replay_logit], dim=0)
             disc_info = self._disc_loss(disc_agent_cat_logit, disc_demo_logit, amp_obs_demo)
+            # AMP算法特有：判别器损失
             disc_loss = disc_info['disc_loss']
-
+            # 3. 总损失
             loss = a_loss + self.critic_coef * c_loss - self.entropy_coef * entropy + self.bounds_loss_coef * b_loss \
                  + self._disc_coef * disc_loss
             
@@ -323,7 +332,7 @@ class AMPAgent(common_agent.CommonAgent):
             else:
                 for param in self.model.parameters():
                     param.grad = None
-
+        # 4. 反向传播
         self.scaler.scale(loss).backward()
         #TODO: Refactor this ugliest code of the year
         if self.truncate_grads:
@@ -356,9 +365,9 @@ class AMPAgent(common_agent.CommonAgent):
             'lr_mul': lr_mul, 
             'b_loss': b_loss
         }
-        self.train_result.update(a_info)
-        self.train_result.update(c_info)
-        self.train_result.update(disc_info)
+        self.train_result.update(a_info) # 更新actor网络
+        self.train_result.update(c_info) # 更新critic网络
+        self.train_result.update(disc_info) # 更新判别器网络
 
         return
 

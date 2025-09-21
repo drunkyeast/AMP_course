@@ -370,22 +370,22 @@ class VecTask(Env):
         # randomize actions
         if self.dr_randomizations.get('actions', None):
             actions = self.dr_randomizations['actions']['noise_lambda'](actions)
-
-        action_tensor = torch.clamp(actions, -self.clip_actions, self.clip_actions)
+        
+        action_tensor = torch.clamp(actions, -self.clip_actions, self.clip_actions) # 动作限制
         # apply actions
-        self.pre_physics_step(action_tensor)
+        self.pre_physics_step(action_tensor) # 应用动作到仿真器
 
-        # step physics and render each frame
-        for i in range(self.control_freq_inv):
+        # step physics and render each frame # 物理仿真（通常2步，60Hz→30Hz）
+        for i in range(self.control_freq_inv): # 仿真器会迭代两步? 所以它会和环境更新两次. 
             if self.force_render:
                 self.render()
-            self.gym.simulate(self.sim)
+            self.gym.simulate(self.sim) # 整个仿真器是60Hz, 迭代两步, 外面就相当于30Hz了.
 
         # to fix!
         if self.device == 'cpu':
             self.gym.fetch_results(self.sim, True)
 
-        # compute observations, rewards, resets, ...
+        # compute observations, rewards, resets, ... # 计算奖励和观测, 这个怎么计算的啊?
         self.post_physics_step()
 
         self.control_steps += 1
@@ -405,7 +405,7 @@ class VecTask(Env):
         if self.num_states > 0:
             self.obs_dict["states"] = self.get_state()
 
-        return self.obs_dict, self.rew_buf.to(self.rl_device), self.reset_buf.to(self.rl_device), self.extras
+        return self.obs_dict, self.rew_buf.to(self.rl_device), self.reset_buf.to(self.rl_device), self.extras # 怎么看得懂?
 
     def zero_actions(self) -> torch.Tensor:
         """Returns a buffer with zero actions.
@@ -437,14 +437,15 @@ class VecTask(Env):
 
         return self.obs_dict
 
-    def reset_done(self):
+    def reset_done(self): # 这儿会被光顾
         """Reset the environment.
         Returns:
             Observation dictionary, indices of environments being reset
         """
         done_env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
         if len(done_env_ids) > 0:
-            self.reset_idx(done_env_ids)
+            self.reset_idx(done_env_ids)  # 这里会进入到tasks/humanoid_amp.py, 这个跳转越来越恶心了, 看不懂了.
+            # 这里面对机器人进行重置, 什么初始状态默认是一个固定值, ASAP和AMP里面fdd倾向于用随机的, 从参考轨迹里面随机的选择作为开始状态, 依据论文里面提到的一点略...
 
         self.obs_dict["obs"] = torch.clamp(self.obs_buf, -self.clip_obs, self.clip_obs).to(self.rl_device)
 

@@ -143,7 +143,7 @@ class HumanoidAMP(HumanoidAMPBase):
                                      device=self.device)
         return
 
-    def reset_idx(self, env_ids):
+    def reset_idx(self, env_ids): # 看下面_reset_actor中的 Random参数
         super().reset_idx(env_ids)
         self._init_amp_obs(env_ids)
         return
@@ -152,8 +152,8 @@ class HumanoidAMP(HumanoidAMPBase):
         if (self._state_init == HumanoidAMP.StateInit.Default):
             self._reset_default(env_ids)
         elif (self._state_init == HumanoidAMP.StateInit.Start
-              or self._state_init == HumanoidAMP.StateInit.Random):
-            self._reset_ref_state_init(env_ids)
+              or self._state_init == HumanoidAMP.StateInit.Random): # 配置文件设置的Random, 在isaacgymenvs/cfg/task/HumanoidAMP.yaml中有个stateInit: "Random"
+            self._reset_ref_state_init(env_ids) # 然后进入到这里面
         elif (self._state_init == HumanoidAMP.StateInit.Hybrid):
             self._reset_hybrid_state_init(env_ids)
         else:
@@ -185,12 +185,14 @@ class HumanoidAMP(HumanoidAMPBase):
         
         if (self._state_init == HumanoidAMP.StateInit.Random
             or self._state_init == HumanoidAMP.StateInit.Hybrid):
-            motion_times = self._motion_lib.sample_time(motion_ids)
+            motion_times = self._motion_lib.sample_time(motion_ids) # 对参考的数据集进行采样
         elif (self._state_init == HumanoidAMP.StateInit.Start):
             motion_times = np.zeros(num_envs)
         else:
             assert(False), "Unsupported state initialization strategy: {:s}".format(str(self._state_init))
 
+        # 对参考的数据集进行采样, 采样得到这些状态, 这些状态是105维度, 然后给到机器人初始状态. 因为NUM_AMP_OBS_PER_STEP = 13 + 52 + 28 + 12 # [root_h, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos]
+        # 看完后返回到 AMPAgent的 play_steps函数中. 这走的很深层了, 走了好多层了.
         root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
                = self._motion_lib.get_motion_state(motion_ids, motion_times)
 

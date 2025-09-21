@@ -1,14 +1,9 @@
 {
     "python.defaultInterpreterPath": "/home/touma/dev/toolchains/miniconda3/envs/robot_gym/bin/python",
-    "python.terminal.activateEnvironment": true,
-    "python.debugging.justMyCode": false,
-    "python.analysis.autoImportCompletions": true,
-    "python.analysis.extraPaths": [
-        "${workspaceFolder}",
-        "${workspaceFolder}/isaacgymenvs"
-    ],
-    "files.associations": {
-        "*.yaml": "yaml",
-        "*.yml": "yaml"
-    }
+    "python.analysis.extraPaths": ["${workspaceFolder}", "${workspaceFolder}/isaacgymenvs"],
+    
+    // 核心调试设置
+    "python.debugging.justMyCode": false,  // 改为 true 只看自己代码
+    // "debug.showInlineValues": true,         // 改为 false 关闭黄色变量显示
+    // "debug.inlineValues": "on"              // 确保inline values启用
 }
