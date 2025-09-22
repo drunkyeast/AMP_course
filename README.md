@@ -46,9 +46,17 @@ python isaacgymenvs/train.py  task=HumanoidAMP headless=False test=True num_envs
 # 训练后的Play与sim2sim
 训练后会得到`/home/touma/dev/opensource/AMP_course/runs/G1AMP_02-23-06-14/nn/G1AMP_02-23-06-16_3000.pth` 这样的模型文件.
 然后运行Play模式会用到这个模型, 然后创建policy_11.pt这样的文件, 调试过程中看得到.
-再运行export_onnx_policy.py文件, 期间需要pip install onnx onnxruntime, 然后会得到amp_walk_run.onnx, 把它复制到sim2sim_gym_amp/config中. 
+再运行export_onnx_policy.py文件, 期间需要`pip install onnx onnxruntime`, 然后会得到amp_walk_run.onnx, 把它复制到sim2sim_gym_amp/config中. 同样的还要吧obs_norm.py拷贝并重命名为obs_norm_walk_run.npz, 除了模型还需要这个玩意儿.
 然后阅读sim2sim_gym_amp/下面两个xxxEffort和xxxPD*.py, 分别表示力矩模型和PD模型... 阅读起来也挺麻烦的... 我就没时间看了...
 今天埃夫特HR给我打电话, 告诉我强化学习算法岗我不配(不是原话但就是这个意思)... 迷茫啊...... 所以最后简单学习就不看了...
+然后运行/home/touma/dev/opensource/AMP_course/sim2sim_gym_amp/issacGymHumanoidPD_g1walk_command.py 这个文件, 在文件中修改速度, 或者额外写一套键盘控制代替它里面的手柄控制, 去控制速度移动. 这个是PD模式, PD全称是什么什么什么微分... 
+/home/touma/dev/opensource/AMP_course/sim2sim_gym_amp/issacGymHumanoidEffort_g1.py 一样的可以运行, 力矩模式.
+
+再后面是sim2sim到mujoco, 用的不是PD模式, 而是力矩模式. `pip install mujoco-python-viewer pygame`
+然后运行/home/touma/dev/opensource/AMP_course/sim2sim_gym_amp/onnx_infer_walk_command.py 这个就ok. 里面的具体逻辑, 
+我已经没心情看了, 人形机器人, 强化学习算法, 具身智能算法我是不配了. 
+哎~ 凭什么你们都是初创公司, 你们都是行业的新人, 但不给想转行进入这个行业的校招新人一点机会呢?
+到此为止了, 我得思考思考我以后到底该如何就业. 这AMP我只是跑通了流程, 看懂了训练的逻辑, 但sim2sim, 以及涉及到urdf和xml的东西我都不懂, 我只懂强化学习.
 
 
 

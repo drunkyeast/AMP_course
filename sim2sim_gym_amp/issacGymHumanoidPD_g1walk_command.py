@@ -126,10 +126,10 @@ class HumanoidSim:
         self.num_envs = 1         # 环境数量
         self.asset_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'robot')
         self.asset_file = "g1_description/mjcf/g1_29dof_anneal_23dof.xml"
-        # self.meanStdPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/obs_norm_14400.npz')
-        # self.onnxPath =  os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/amp_4080_walk_14400.onnx')
-        self.meanStdPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/obs_norm_walk_run.npz')
-        self.onnxPath =  os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/amp_walk_run.onnx')
+        self.meanStdPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/obs_norm_14400.npz')
+        self.onnxPath =  os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/amp_4080_walk_14400.onnx')
+        # self.meanStdPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/obs_norm_walk_run.npz')
+        # self.onnxPath =  os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/amp_walk_run.onnx')
         '''
         为什么模型与归一化参数分开搞呢?
         强化学习框架（如rl_games）通常将：
