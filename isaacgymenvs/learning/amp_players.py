@@ -44,7 +44,7 @@ class AMPPlayerContinuous(common_player.CommonPlayer):
         self._disc_reward_scale = config['disc_reward_scale']
         self._print_disc_prediction = config.get('print_disc_prediction', False)
         
-        super().__init__(params)
+        super().__init__(params) # 这里面深入进去, 会发现和train模式, 一样要构建网络, load_network相关. 代码也是一样的, 工厂模式创建train中的一些model.
         return
 
     def restore(self, fn):
@@ -54,7 +54,7 @@ class AMPPlayerContinuous(common_player.CommonPlayer):
             self._amp_input_mean_std.load_state_dict(checkpoint['amp_input_mean_std'])
 
         import os, copy
-        path = os.path.join('runs', 'policy_11.pt')
+        path = os.path.join('runs', 'policy_11.pt') # 这儿会保存policy_11.py以及下面什么norm相关参数.
         model = torch.nn.Sequential(
             copy.deepcopy(self.model.a2c_network.actor_mlp),
             copy.deepcopy(self.model.a2c_network.mu)
@@ -66,7 +66,7 @@ class AMPPlayerContinuous(common_player.CommonPlayer):
         mean = norm_state['running_mean'].cpu().numpy()
         std = torch.sqrt(norm_state['running_var'] + 1e-5).cpu().numpy() 
         import numpy as np
-        np.savez('runs/obs_norm.npz', mean=mean, std=std) 
+        np.savez('runs/obs_norm.npz', mean=mean, std=std)  # 这儿保存正则化norm相关参数
         return
     
     def _build_net(self, config):

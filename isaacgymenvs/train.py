@@ -149,7 +149,26 @@ def launch_rlg_hydra(cfg: DictConfig):
         'env_creator': lambda **kwargs: create_isaacgym_env(**kwargs), # 这个是lambda表达式, 不会执行. 这是注册环境, 不知何时才会创建
     })
 
-    ige_env_cls = isaacgym_task_map[cfg.task_name]
+    ige_env_cls = isaacgym_task_map[cfg.task_name] # task_name=G1AMP, 对应了isaacgymenvs/tasks/g1_amp.py文件(或G1AMP.yaml), yaml中asset模块中assetFileName: "g1_description/mjcf/g1_29dof_anneal_23dof.xml" 
+    # 选中g1_amp.py和humanoid_amp.py这两个文件然后右键对比, 改了motions相关文件, 改了观测维度105就变了 改了一些名字, 改了一个路径, 这些改动我能秒懂. 还有少量, 只有5行 还不理解.
+    # 再对比G1AMP.yaml和HumanoidAMP.yaml文件, 例如增加了行走的速度, 奔跑的速度. 还有xml文件的修改.
+    # 然后对比G1AMPPPO.yaml和HumanoidAMPPPO.yaml, 如save_frequency, epochs, 
+    # 对比g1_amp_base.py和humanoid_amp_base.py, 自由度关节数,bos等等...还有什么command?
+    # 对比tasks/amp/utils_amp下面的motion_lib_g1.py, 以及motion_lib.py. 能看到motions的读取? 170行左右? 另外G1AMP.yaml中有motion_file: "amp_g1_walk_run.yaml". 
+    
+    # 1. train.py启动 → Hydra解析命令行参数 task=G1AMP
+    # 2. 配置加载 → 合并config.yaml + G1AMP.yaml + G1AMPPPO.yaml, yaml中又有xml的信息...
+    # 3. 在isaacgymenvs.make(), 类实例化 → G1AMP(cfg, ...) → G1AMPBase(config, ...) → VecTask(config, ...), 这就对应了g1_amp.py和g1_amp_base.py这些文件
+    # 4. 资源加载 → MJCF模型文件 + 动作数据文件
+    # 5. 仿真初始化 → Isaac Gym环境创建完成
+
+    # motions文件到train的链路
+    # 1. 配置驱动：G1AMP.yaml中的motion_file参数决定加载哪个motion文件.      amp_g1_walk_run.yaml
+    # 2. 路径构建：g1_amp.py中拼接完整路径assets/amp/g1_motions/            asset/amp/g1_motions/amp_g1_walk_run.yaml
+    # 3. 数据解析：motion_lib_g1.py负责实际的文件读取和数据处理              里面有curr_motion去读取文件?
+    # 4. 格式支持：支持单个.npy文件或包含多个motion的.yaml配置文件
+
+    # 总结一下: 如果我要从零开始, 增加一个机器人模型(例如众擎的), 我要修改好多地方的代码啊, 我自己肯定是搞不定的. 一方面是代码框架的修改, 另一方面是xml的修改.
     dict_cls = ige_env_cls.dict_obs_cls if hasattr(ige_env_cls, 'dict_obs_cls') and ige_env_cls.dict_obs_cls else False
 
     if dict_cls:
@@ -281,12 +300,14 @@ def launch_rlg_hydra(cfg: DictConfig):
 if __name__ == "__main__":
     import sys
     # sys.argv = ["train.py", "task=HumanoidAMP", "headless=False"]
-    sys.argv = ["train.py", "task=HumanoidAMP", "headless=False", "num_envs=512", "train.params.config.minibatch_size=8192"]
+    # sys.argv = ["train.py", "task=HumanoidAMP", "headless=False", "num_envs=512", "train.params.config.minibatch_size=8192"]
     # sys.argv = ["train.py", "task=G1AMP", "headless=True"]
+    # sys.argv = ["train.py", "task=G1AMP", "headless=True", "num_envs=256", "train.params.config.minibatch_size=4096"]
+    
  
-    # sys.argv = ["launch.py", "task=G1AMP", "headless=False",
-    #             "test=True", "num_envs=2",  # test=True会进入推理模式, 又叫play...
-    #             "checkpoint=/home/fdd/fei/AMP_Human/AMP_course/runs/G1AMP_02-23-06-14/nn/G1AMP_02-23-06-16_3000.pth"]
+    sys.argv = ["launch.py", "task=G1AMP", "headless=False",
+                "test=True", "num_envs=2",  # test=True会进入推理模式, 又叫play...
+                "checkpoint=/home/touma/dev/opensource/AMP_course/runs/G1AMP_02-23-06-14/nn/G1AMP_02-23-06-16_3000.pth"]
 
 
     launch_rlg_hydra()

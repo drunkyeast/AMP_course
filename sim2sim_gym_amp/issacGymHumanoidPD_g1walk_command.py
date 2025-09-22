@@ -15,11 +15,13 @@ from threading import Thread
 KEY_BODY_NAMES = ["head_link_o", "left_hand_link","right_hand_link", 
                   "left_ankle_roll_link",  "right_ankle_roll_link"]
 
-x_vel_cmd,y_vel_cmd,yaw_vel_cmd = 1.0, 0.0, 0.0 
+# 这儿控制了速度.
+# x_vel_cmd,y_vel_cmd,yaw_vel_cmd = 1.0, 0.0, 0.0  # 前进
+x_vel_cmd,y_vel_cmd,yaw_vel_cmd = 3.0, 0.0, 0.0  # 加速前进
 x_vel_max,y_vel_max,yaw_vel_max = 3.5, 1.0, 1.0
 stand_walk_flag = 0
  
-joystick_use = True
+joystick_use = False # 我没有手柄啊, 所以禁用掉吧
 joystick_opened = False
 class cmd:
     vx = 1.0
@@ -41,7 +43,7 @@ if joystick_use:
         
         while not exit_flag:
             pygame.event.get()
-
+            # 这儿是手柄的映射!!!!!!!!!!!!!!!!!!!!!
             x_vel_cmd = -joystick.get_axis(1) * x_vel_max
             y_vel_cmd = -joystick.get_axis(0) * y_vel_max
             yaw_vel_cmd = -joystick.get_axis(3) * yaw_vel_max
@@ -124,12 +126,20 @@ class HumanoidSim:
         self.num_envs = 1         # 环境数量
         self.asset_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'robot')
         self.asset_file = "g1_description/mjcf/g1_29dof_anneal_23dof.xml"
-        self.meanStdPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/obs_norm_14400.npz')
-        self.onnxPath =  os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/amp_4080_walk_14400.onnx')
-        # self.meanStdPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/obs_norm_walk_run.npz')
-        # self.onnxPath =  os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/amp_walk_run.onnx')
+        # self.meanStdPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/obs_norm_14400.npz')
+        # self.onnxPath =  os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/amp_4080_walk_14400.onnx')
+        self.meanStdPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/obs_norm_walk_run.npz')
+        self.onnxPath =  os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/amp_walk_run.onnx')
+        '''
+        为什么模型与归一化参数分开搞呢?
+        强化学习框架（如rl_games）通常将：
+          模型权重：神经网络参数
+          环境统计：观测归一化参数
+          训练状态：优化器状态等
+        分开存储，这是历史习惯。
+        '''
         self.last_frame_time = 0 
-        self.control_freq_inv = 2  
+        self.control_freq_inv = 2  # 这个东西决定了, 60Hz与30Hz的问题.
 
 
         # -------------------------------

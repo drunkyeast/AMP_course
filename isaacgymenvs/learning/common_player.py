@@ -37,8 +37,8 @@ from rl_games.common.player import BasePlayer
 class CommonPlayer(players.PpoPlayerContinuous):
 
     def __init__(self, params):
-        BasePlayer.__init__(self, params)
-        self.network = self.config['network']
+        BasePlayer.__init__(self, params) # 经典, 这里面会走一大圈!!!!!!!!!!!!!!!!!!!!!!!!!! 不看这儿就清晰很多!!!
+        self.network = self.config['network'] # 结果就是得到这个网络, network是a2c?
 
         self.normalize_input = self.config['normalize_input']
         self.normalize_value = self.config['normalize_value']
@@ -47,8 +47,42 @@ class CommonPlayer(players.PpoPlayerContinuous):
         self.mask = [False]
         
         net_config = self._build_net_config()
-        self._build_net(net_config)   
-        
+        self._build_net(net_config)  # 这个看似不起眼, 但很重要啊, 这里面把model/神经网络创建了. 但不是通过返回值, 而是通过self.model赋值.
+        # 这里可以self.model看看网络结构. 非常重要!!! 其实这结构与train是一样的, 都是在Commonxxx中创建好的. 之前是CommonAgent, 这里是CommonPlayer.
+        '''
+        Network(
+            (value_mean_std): RunningMeanStd()
+            (running_mean_std): RunningMeanStd()
+            (a2c_network): Network(
+                (actor_cnn): Sequential()
+                (critic_cnn): Sequential()
+                (actor_mlp): Sequential(
+                (0): Linear(in_features=77, out_features=1024, bias=True)
+                (1): ReLU()
+                (2): Linear(in_features=1024, out_features=512, bias=True)
+                (3): ReLU()
+                )
+                (critic_mlp): Sequential(
+                (0): Linear(in_features=77, out_features=1024, bias=True)
+                (1): ReLU()
+                (2): Linear(in_features=1024, out_features=512, bias=True)
+                (3): ReLU()
+                )
+                (value): Linear(in_features=512, out_features=1, bias=True)
+                (value_act): Identity()
+                (mu): Linear(in_features=512, out_features=23, bias=True)
+                (mu_act): Identity()
+                (sigma_act): Identity()
+                (_disc_mlp): Sequential(
+                (0): Linear(in_features=148, out_features=1024, bias=True)
+                (1): ReLU()
+                (2): Linear(in_features=1024, out_features=512, bias=True)
+                (3): ReLU()
+                )
+                (_disc_logits): Linear(in_features=512, out_features=1, bias=True)
+            )
+        )
+        '''
         return
 
     def run(self):
@@ -72,7 +106,7 @@ class CommonPlayer(players.PpoPlayerContinuous):
             has_masks = self.env.has_action_mask()
 
         need_init_rnn = self.is_rnn
-        for _ in range(n_games):
+        for _ in range(n_games): # 2000
             if games_played >= n_games:
                 break
 
@@ -89,7 +123,7 @@ class CommonPlayer(players.PpoPlayerContinuous):
 
             print_game_res = False
 
-            for n in range(self.max_steps):
+            for n in range(self.max_steps): # 108000 // 4
                 obs_dict, done_env_ids = self._env_reset_done()
 
                 if has_masks:
@@ -163,7 +197,8 @@ class CommonPlayer(players.PpoPlayerContinuous):
         return output
 
     def _build_net(self, config):
-        self.model = self.network.build(config)
+        self.model = self.network.build(config) # 这个self.model很重要啊, 走了很大一圈, 就是得到这么个model, (网络, network...)
+        # 这儿重要啊, 把model/神经网络结构理解. 输入从之前105变成了77, 自由度从28变成23. 其他都一样.
         self.model.to(self.device)
         self.model.eval()
         self.is_rnn = self.model.is_rnn()

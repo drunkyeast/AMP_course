@@ -41,6 +41,14 @@ python isaacgymenvs/train.py  task=HumanoidAMP headless=False test=True num_envs
 
 
 # 代码解读
+我录制了两个视频(一个画质模糊, 所以又重新录制了一个), 用调试的顺序详细说明了train的流程. 后续看play的流程发现基本一致. 
+
+# 训练后的Play与sim2sim
+训练后会得到`/home/touma/dev/opensource/AMP_course/runs/G1AMP_02-23-06-14/nn/G1AMP_02-23-06-16_3000.pth` 这样的模型文件.
+然后运行Play模式会用到这个模型, 然后创建policy_11.pt这样的文件, 调试过程中看得到.
+再运行export_onnx_policy.py文件, 期间需要pip install onnx onnxruntime, 然后会得到amp_walk_run.onnx, 把它复制到sim2sim_gym_amp/config中. 
+然后阅读sim2sim_gym_amp/下面两个xxxEffort和xxxPD*.py, 分别表示力矩模型和PD模型... 阅读起来也挺麻烦的... 我就没时间看了...
+今天埃夫特HR给我打电话, 告诉我强化学习算法岗我不配(不是原话但就是这个意思)... 迷茫啊...... 所以最后简单学习就不看了...
 
 
 
